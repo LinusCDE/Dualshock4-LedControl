@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package linuscde98.dualshock4.ledcontrol;
 
 import java.io.BufferedWriter;
@@ -13,16 +9,16 @@ public class WriteFile {
    
     public static void write(File f, String[] str, boolean append){
     
-    //Checke ob Datei existiert.
+    // Check if file exists
     if(f.exists() == false){
             try {
-                //Erstelle leere Datei
+                // Creating empty file
                 f.createNewFile();
             } catch (IOException ex) {
             }
     }
     
-    //Schreibe Datei
+    // Writing file
     try{
     BufferedWriter bw = new BufferedWriter(new FileWriter(f, append));
     

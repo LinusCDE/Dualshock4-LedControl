@@ -1,13 +1,11 @@
 package linuscde98.dualshock4.ledcontrol;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.util.Arrays;
 import java.util.HashMap;
 
 import javax.swing.BorderFactory;
@@ -19,9 +17,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.border.Border;
 
 public class Dualshock4Leds {
 
@@ -29,7 +25,7 @@ public class Dualshock4Leds {
 		
 		// Check for Unix
 		if(File.listRoots().length != 1 || !File.listRoots()[0].getPath().equalsIgnoreCase("/")){
-			JOptionPane.showMessageDialog(null, "Dieses Programm funktioniert NUR mit einem Unix-System (Linux, OS X, BSD, ...)", "Operating System nicht unterstützt!", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "This program is meant to work only with Unix-Systems (Linux, OS X, BSD, ...)", "Operating system not supported!", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 		
@@ -55,8 +51,11 @@ public class Dualshock4Leds {
 	public JLabel currentColor;
 	public JPanel colorPane;
 	
-	public HashMap<String/*Controller Name*/, String/*Device ID*/> controllerList = new HashMap<String, String>();
+	public HashMap<String/*Controller name*/, String/*Device ID*/> controllerList = new HashMap<String, String>();
 	
+	/**
+	 * Updates the list of available controllers in the window
+	 */
 	public void reloadControllers(){
 		colorPane.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK), "---"));
 		colorPane.setEnabled(false);
@@ -69,13 +68,16 @@ public class Dualshock4Leds {
 		
 		for(int i = 0; i < devids.length; i++){
 			int capacity = UnixLedAPI.getBatteryCapacity(devids[i]);
-			controllerList.put("DS4-Controller " + (i+1) + (capacity != -1 ? " (Akku: " + capacity + "%)" : ""), devids[i]);
+			controllerList.put("DS4-Controller " + (i+1) + (capacity != -1 ? " (Accu: " + capacity + "%)" : ""), devids[i]);
 		}
 		
 		controllers.setModel(new SimpleComboBoxModel<String>(controllerList.keySet().toArray(new String[]{})));
 		SwingUtilities.updateComponentTreeUI(controllers);
 	}
 	
+	/**
+	 * Update color-data for selected controller in the window
+	 */
 	public void refreshSelected(){
 		int index = controllers.getSelectedIndex();
 		if(!(index < controllerList.size() && index >= 0)) return;
@@ -84,14 +86,14 @@ public class Dualshock4Leds {
 		String devid = controllerList.get(devname);
 		if(!UnixLedAPI.isValidDualshock4(devid)){
 			currentColor.setIcon(null);
-			currentColor.setText("Farbe: Nicht gefunden!");
+			currentColor.setText("Color: Not found!");
 			return;
 		}
 		
 		int[] clr = UnixLedAPI.readRGB(devid);
 		if(clr == null){
 			currentColor.setIcon(null);
-			currentColor.setText("Farbe: Lese-Fehler!");
+			currentColor.setText("Color: Read-Failure!");
 			return;
 		}
 		Color c = new Color(clr[0], clr[1], clr[2]);
@@ -116,7 +118,10 @@ public class Dualshock4Leds {
 		SwingUtilities.updateComponentTreeUI(colorPane);
 	}
 	
-	public void changeColor(){
+	/**
+	 * Prompts user to choose a new colors and flushes it to the controller
+	 */
+	public void chooseAndChangeColor(){
 		int index = controllers.getSelectedIndex();
 		if(!(index < controllerList.size() && index >= 0)) return;
 		
@@ -125,46 +130,51 @@ public class Dualshock4Leds {
 		if(devid == null) return;
 		
 		if(!UnixLedAPI.isValidDualshock4(devid)){
-			JOptionPane.showMessageDialog(null, "Controller nicht gefunden!", "Fehler", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "Controller not found!", "Fehler", JOptionPane.ERROR_MESSAGE);
 			reloadControllers();
 			return;
 		}
 		
 		int[] clr = UnixLedAPI.readRGB(devid);
 		if(clr == null){
-			JOptionPane.showMessageDialog(null, "Farbe nicht lesbar!", "Fehler", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "Color not readable!", "Fehler", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 		
 		if(!UnixLedAPI.isAccessible(devid)){
-			JOptionPane.showMessageDialog(null, "Die Farbe kann nicht geändert werden.\nMöglicherweise brauchts du Root-Rechte.", "Keine Rechte", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "The color can't be changed.\nYou may need Root-Access.", "Insufficient privileges!", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 		
 		Color c = new Color(clr[0], clr[1], clr[2]);
-		Color newcolor = JColorChooser.showDialog(win, "Farbe für " + devname + " wählen", c);
+		Color newcolor = JColorChooser.showDialog(win, "Choose color for " + devname, c);
 		if(!UnixLedAPI.writeRGB(devid, newcolor.getRed(), newcolor.getGreen(), newcolor.getBlue())){
-			JOptionPane.showMessageDialog(null, "Farbe konnte nicht geändert werden!", "Fehler", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "Color could not be changed!", "Error", JOptionPane.ERROR_MESSAGE);
 		}
 		refreshSelected();
 	}
 	
+	/**
+	 * Constructor - builds window and adds some actionlisteners to window-components
+	 */
 	public Dualshock4Leds(){
-		win = new JFrame("Dualshock 4 - Farbtool");
-		win.setSize(600, 400);
-		win.setLayout(null);
-		//win.setResizable(false);
 		
+		// Building basic window
+		win = new JFrame("Dualshock 4 - Colortool");
+		win.setSize(600, 400);
+		win.setLayout(null); // disabling automatic arrangement to allow positions by pixels
+		
+		// Creating components and configuring them
 		controllers = new JComboBox<String>(new String[]{});
-		refreshControllers = new JButton("Liste aktualisieren");
+		refreshControllers = new JButton("Refresh list");
 		
 		colorPane = new JPanel();
 		colorPane.setLayout(null);
 		colorPane.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLACK), "---"));
 		colorPane.setEnabled(false);
 		
-		changeColor = new JButton("Farbe ändern");
-		currentColor = new JLabel("Farbe: ---");
+		changeColor = new JButton("Change color");
+		currentColor = new JLabel("Color: ---");
 		
 		int y = colorPane.getInsets().top;
 		
@@ -201,7 +211,7 @@ public class Dualshock4Leds {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				changeColor();
+				chooseAndChangeColor();
 			}
 		});
 		

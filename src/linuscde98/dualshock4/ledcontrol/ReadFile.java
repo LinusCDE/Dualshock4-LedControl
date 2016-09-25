@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package linuscde98.dualshock4.ledcontrol;
 
 import java.io.BufferedReader;
@@ -13,21 +9,21 @@ public class ReadFile {
     
     public static String[] read(File f){
     
-    //Speicher für die Zeilen
+    // Buffer for the lines
     ArrayList<String> list = new ArrayList<String>();
    
-    //Checke ob Datei existiert.
+    // Checking if file exists
     if(f.exists() == false){
     return null;
     }
     
-    //Lese Datei
+    // Reading file
     try{
     BufferedReader br = new BufferedReader(new FileReader(f));
     
-    //Speicher für aktuelle Zeile
+    // Buffer for current line
     String line;
-    //Lese Zeile für Zeile
+    // Read line by line
     while((line = br.readLine()) != null){
     if(line.equalsIgnoreCase("") == false && !line.startsWith("#")){
     list.add(line);
@@ -38,11 +34,10 @@ public class ReadFile {
     }catch(Exception e){
     }
     
-    //Konvertiere ArrayList in einen StringArray
+    // Convert ArrayList to a StringArray
     String[] str = new String[]{};
     str = list.toArray(str);
     
-    //Gebe den StringArray zurück
     return str;
     }
     
