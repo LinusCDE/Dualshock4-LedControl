@@ -1,4 +1,4 @@
-#Dualshock4-LedControl
+# Dualshock4-LedControl
 
 This is an little application written in Java to change the color of the LED/Lightbar of the Dualshock4-Controller.
 It is written to work with the SysFS in /sys. Linux does have support since Kernel 3.15.
