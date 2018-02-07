@@ -14,7 +14,7 @@ public class UnixLedAPI {
 	 * @return Array of device-ids (or short devids) Format is: XXXX:054C:05C4.XXXX (X = numbers in HEX, remaining are vendorid and productid)
 	 */
 	public static String[] listControllers(){
-		ArrayList<String> devids = new ArrayList<String>();
+		ArrayList<String> deviceIds = new ArrayList<String>();
 		
 		if(!FOLDER_LEDS.exists()) return new String[]{};
 		
@@ -23,50 +23,51 @@ public class UnixLedAPI {
 			if(f.isFile()) continue;
 			if(!f.getName().contains(":")) continue;
 			
-			String devid = f.getName().substring(0, f.getName().lastIndexOf(":"));
-			
-			if(!devids.contains(devid) && isValidDualshock4(devid)) devids.add(devid);
+			String deviceId = f.getName().substring(0, f.getName().lastIndexOf(":"));
+
+			if(!deviceIds.contains(deviceId) && isValidDualshock4(deviceId)) deviceIds.add(deviceId);
 		}
 		
-		return devids.toArray(new String[]{});
+		return deviceIds.toArray(new String[]{});
 	}
 	
 	/**
 	 * Checks if device is a valid DS4-Controller
-	 * @param Deviceid Id of controller (see listControllers() for more)
+	 * @param deviceId Id of controller (see listControllers() for more)
 	 * @return Whether it is a DS4-Controller or not
 	 */
-	public static boolean isValidDualshock4(String deviceid){
-		File red = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red");
-		File green = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":green");
-		File blue = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":blue");
-		
-		if(!red.exists() || !green.exists() || !blue.exists() || !red.isDirectory() || !green.isDirectory() || !blue.isDirectory())
-			return false;
-		
-		File input_dir = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red/device/input");
-		
-		if(!input_dir.exists() || !input_dir.isDirectory()) return false;
-		
-		String[] input_devices = input_dir.list();
-		String input_devname = input_devices.length != 1 ? null : input_devices[0];
-		
-		if(input_devname == null) return false;
-		
-		File f_vendor = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red/device/input/" + input_devname + "/id/vendor");
-		File f_product = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red/device/input/" + input_devname + "/id/product");
-		
-		if(!f_vendor.exists() || !f_product.exists() || f_vendor.isDirectory() || f_product.isDirectory())
+	public static boolean isValidDualshock4(String deviceId){
+
+		// Check for existence of all three LED-Folders:
+		File redLedFolder = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceId + ":red");
+		File greenLedFolder = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceId + ":green");
+		File blueLedFolder = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceId + ":blue");
+
+		if(!redLedFolder.exists() || !greenLedFolder.exists() || !blueLedFolder.exists() ||
+				!redLedFolder.isDirectory() || !greenLedFolder.isDirectory() || !blueLedFolder.isDirectory())
 			return false;
 
-		String[] ret_vendor = ReadFile.read(f_vendor);
-		String[] ret_product = ReadFile.read(f_product);
+		// Get Input-Device (which contains vendor- and product-information)
+		File inputDir = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceId + ":red/device/input");
 		
-		if(ret_vendor == null || ret_product == null || ret_vendor.length == 0 || ret_product.length == 0)
+		if(!inputDir.exists() || !inputDir.isDirectory()) return false;
+		
+		String[] inputDevices = inputDir.list();
+		String inputDevName = inputDevices.length == 0 ? null : inputDevices[0];
+		if(inputDevName == null) return false;
+
+		// Get Vendor and Prodoct ids:
+		File vendorFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceId + ":red/device/input/" + inputDevName + "/id/vendor");
+		File productFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceId + ":red/device/input/" + inputDevName + "/id/product");
+		if(!vendorFile.exists() || !productFile.exists() || vendorFile.isDirectory() || productFile.isDirectory())
 			return false;
-		
-		String vendor = ret_vendor[0], product = ret_product[0];
-		
+
+		String[] vendorContent = ReadFile.read(vendorFile);
+		String[] productContent = ReadFile.read(productFile);
+		if(vendorContent == null || productContent == null || vendorContent.length == 0 || productContent.length == 0)
+			return false;
+
+		String vendor = vendorContent[0], product = productContent[0];
 		if(!vendor.equals(DS4_VENDOR) || !product.equals(DS4_PRODUCT)) return false;
 		
 		return true;
@@ -74,18 +75,19 @@ public class UnixLedAPI {
 	
 	/**
 	 * Checks if program has enough rights to change the led-color of a given device
-	 * @param deviceid Deviceid Id of controller (see listControllers() for more)
+	 * @param deviceId Deviceid Id of controller (see listControllers() for more)
 	 * @return Whether the led-color is changeable (i.e. having write-access for the files that contain the colors)
 	 */
-	public static boolean isAccessible(String deviceid){
-		if(!isValidDualshock4(deviceid)) return false;
+	public static boolean isAccessible(String deviceId){
+		if(!isValidDualshock4(deviceId)) return false;
+
+		// Color brightness/value files:
+		File redValueFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceId + ":red/brightness");
+		File greenValueFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceId + ":green/brightness");
+		File blueValueFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceId + ":blue/brightness");
 		
-		File red_val = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red/brightness");
-		File green_val = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":green/brightness");
-		File blue_val = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":blue/brightness");
-		
-		if(!red_val.canWrite() || !green_val.canWrite() || !blue_val.canWrite()) return false;
-		
+		if(!redValueFile.canWrite() || !greenValueFile.canWrite() || !blueValueFile.canWrite()) return false;
+
 		return true;
 	}
 	
@@ -99,18 +101,21 @@ public class UnixLedAPI {
 	 */
 	public static boolean writeRGB(String deviceid, int red, int green, int blue){
 		if(!isValidDualshock4(deviceid) || !isAccessible(deviceid)) return false;
-		
-		File red_val = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red/brightness");
-		File green_val = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":green/brightness");
-		File blue_val = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":blue/brightness");
-		
-		if(red > 255) red = 255; 		if(red < 0) red = 0;
-		if(green > 255) green = 255; 	if(green < 0) green = 0;
-		if(blue > 255) blue = 255; 		if(blue < 0) blue = 0;
-		
-		WriteFile.write(red_val, new String[]{"" + red, ""}, false);
-		WriteFile.write(green_val, new String[]{"" + green, ""}, false);
-		WriteFile.write(blue_val, new String[]{"" + blue, ""}, false);
+
+		// Ensure color range between 0 and 255:
+		red = Math.max(0, Math.min(red, 255));
+		green = Math.max(0, Math.min(green, 255));
+		blue = Math.max(0, Math.min(blue, 255));
+
+		// Color brightness/value files:
+		File redValueFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red/brightness");
+		File greenValueFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":green/brightness");
+		File blueValueFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":blue/brightness");
+
+		// Write color values:
+		WriteFile.write(redValueFile, new String[]{"" + red, ""}, false);
+		WriteFile.write(greenValueFile, new String[]{"" + green, ""}, false);
+		WriteFile.write(blueValueFile, new String[]{"" + blue, ""}, false);
 		
 		return true;
 	}
@@ -122,25 +127,28 @@ public class UnixLedAPI {
 	 */
 	public static int[] readRGB(String deviceid){
 		if(!isValidDualshock4(deviceid)) return null;
-		
-		File red_val = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red/brightness");
-		File green_val = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":green/brightness");
-		File blue_val = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":blue/brightness");
+
+		// Color brightness/value files:
+		File redValueFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red/brightness");
+		File greenValueFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":green/brightness");
+		File blueValueFile = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":blue/brightness");
 		
 		int r = 0, g = 0, b = 0;
 		
-		String[] res_red = ReadFile.read(red_val);
-		String[] res_green = ReadFile.read(green_val);
-		String[] res_blue = ReadFile.read(blue_val);
+		String[] redContent = ReadFile.read(redValueFile);
+		String[] greenContent = ReadFile.read(greenValueFile);
+		String[] blueContent = ReadFile.read(blueValueFile);
 		
 		try{
-		
-		if(res_red != null && res_red.length > 0) r = Integer.parseInt(res_red[0]);
-		if(res_green != null && res_green.length > 0) g = Integer.parseInt(res_green[0]);
-		if(res_blue != null && res_blue.length > 0) b = Integer.parseInt(res_blue[0]);	
-		
-		return new int[]{r, g, b};
-		}catch(Exception ex){}
+
+			// Read rgb-values from files:
+			if(redContent != null && redContent.length > 0) r = Integer.parseInt(redContent[0]);
+			if(greenContent != null && greenContent.length > 0) g = Integer.parseInt(greenContent[0]);
+			if(blueContent != null && blueContent.length > 0) b = Integer.parseInt(blueContent[0]);
+
+			return new int[]{r, g, b};
+
+		}catch(Exception ignored){}
 		
 		return null;
 	}
@@ -152,24 +160,26 @@ public class UnixLedAPI {
 	 */
 	public static int getBatteryCapacity(String deviceid){
 		if(!isValidDualshock4(deviceid)) return -1;
+
+		File powerSupplyFolder = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red/device/power_supply");
+		if(!powerSupplyFolder.exists() || !powerSupplyFolder.isDirectory()) return -1;
+
+		File[] powerSupplies = powerSupplyFolder.listFiles();
+		String powerSupplyName = powerSupplies == null || powerSupplies.length == 0 ? null : powerSupplies[0].getName();
+		if(powerSupplyName == null) return -1;
 		
-		File power_supply_folder = new File(FOLDER_LEDS.getAbsolutePath() + "/" + deviceid + ":red/device/power_supply");
-		if(!power_supply_folder.exists() || !power_supply_folder.isDirectory()) return -1;
-		File[] power_supplys = power_supply_folder.listFiles();
-		String power_name = power_supplys == null || power_supplys.length == 0 ? null : power_supplys[0].getName();
-		if(power_name == null) return -1;
+		File capacityFile = new File(powerSupplyFolder.getAbsolutePath() + "/" + powerSupplyName + "/capacity");
 		
-		File capacity_val = new File(power_supply_folder.getAbsolutePath() + "/" + power_name + "/capacity");
-		
-		String[] res_capacity = ReadFile.read(capacity_val);
+		String[] capacityContent = ReadFile.read(capacityFile);
 		
 		try{
 		
-		int capacity = -1;
-		if(res_capacity != null && res_capacity.length > 0) capacity = Integer.parseInt(res_capacity[0]);
+			int capacity = -1;
+			if(capacityContent != null && capacityContent.length > 0) capacity = Integer.parseInt(capacityContent[0]);
 		
-		return capacity;
-		}catch(Exception ex){}
+			return capacity;
+
+		}catch(Exception ignored){}
 		
 		return -1;
 	}
